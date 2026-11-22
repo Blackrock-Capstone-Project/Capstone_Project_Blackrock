@@ -24,10 +24,13 @@ venv/
 .idea/
 .claude/settings.local.json
 
-# --- Historical experiment outputs that contain row-level WRDS values or are large ---
-results/nyse_daily/daily_predictions.csv.gz
-results/nyse_daily/label_link_reviews.csv.gz
-results/nyse_daily/mck_gap_check.csv
+# --- Local raw snapshots and comparison outputs (see docs/REPRODUCIBILITY.md) ---
+/Data_snapshot*/
+/compare_*/
+
+# --- Any other bulky or row-level WRDS extracts kept outside Data/ by mistake ---
+*.parquet
+*.feather
 
 # --- Logs / scratch ---
 *.log

@@ -2,22 +2,22 @@
 
 ## 入口与依赖
 
-安装 `scripts/download/requirements-wrds.txt`；已在本地核对 Python 3.13、Pandas 2.2.3、psycopg2-binary 2.9.13、exchange_calendars 4.13.2、matplotlib 3.10.8（质量报告图）。模块使用原生 psycopg2 PostgreSQL 协议，不要求安装 `wrds` 包。已检查本机 WRDS 3.5.0 的连接代码：其自动回退路径可能提示创建 `.pgpass`，因此新模块不用这条路径。
+安装根目录 `requirements.txt`；已在本地核对 Python 3.13、Pandas 2.2.3、psycopg2-binary 2.9.13、exchange_calendars 4.13.2、matplotlib 3.10.8（质量报告图）。模块使用原生 psycopg2 PostgreSQL 协议，不要求安装 `wrds` 包。已检查本机 WRDS 3.5.0 的连接代码：其自动回退路径可能提示创建 `.pgpass`，因此新模块不用这条路径。
 
 ```bash
-python -m scripts.data_pipeline update --start 2022-01-03 --end 2026-10-16
-python -m scripts.data_pipeline update --refresh-sessions 5
-python -m scripts.data_pipeline update --refresh-start 2022-01-03
-python -m scripts.data_pipeline update --download-only
-python -m scripts.data_pipeline process
-python -m scripts.data_pipeline audit
+python -m auction_data update --start 2022-01-03 --end 2026-10-16
+python -m auction_data update --refresh-sessions 5
+python -m auction_data update --refresh-start 2022-01-03
+python -m auction_data update --download-only
+python -m auction_data process
+python -m auction_data audit
 ```
 
 不指定结束日期时，使用纽约当前日期，依据交易日历只下载已收盘并经过 30 分钟的会话；分别探测 daily/TAQ 发布范围。默认最近 5 个已发布交易日涉及的分区重新下载；更早修订需显式刷新。`--refresh-sessions 0` 可关闭近期刷新。支持 `--markets NYSE`、`--data-dir /path/to/Data`、公开 WRDS 主机/端口和连接超时配置。默认同时覆盖 NYSE/Nasdaq，保留原生证券类型。
 
-Python 入口为 `update_data`、`process_data`、`audit_data`（从 `scripts.data_pipeline` 导入）。`update_data` 支持调用者提供 DB-API `connection`（调用者负责关闭），或 `credentials_provider` 回调返回仅包含 `user`、`password` 的字典。不要将真实凭证写入脚本或 notebook。`process_data` 和 `audit_data` 不联网。`update_data` 返回报告；只有 `report['complete']` 为真才代表本次请求及质量层均完成。CLI 成功返回 0，部分完成/待发布/错误返回 2；暂缓（unresolved）证券不影响返回值。复现、快照比较与差异解释见 [复现与差异核查](REPRODUCIBILITY.md)。
+Python 入口为 `update_data`、`process_data`、`audit_data`（从 `auction_data` 导入）。`update_data` 支持调用者提供 DB-API `connection`（调用者负责关闭），或 `credentials_provider` 回调返回仅包含 `user`、`password` 的字典。不要将真实凭证写入脚本或 notebook。`process_data` 和 `audit_data` 不联网。`update_data` 返回报告；只有 `report['complete']` 为真才代表本次请求及质量层均完成。CLI 成功返回 0，部分完成/待发布/错误返回 2；暂缓（unresolved）证券不影响返回值。复现、快照比较与差异解释见 [复现与差异核查](REPRODUCIBILITY.md)。
 
-旧 `wrds_daily_pull.py pull`、`taq_auction_pull.py pull` 转到统一更新入口，会同时维护两类来源；旧 `combine`/`compare` 不再提供。`wrds_taq_check.py` 为只读权限和日期探测。`process_wrds_daily_data.py` 的 `--input/--output` 入口仅用于已有验证元数据的单来源离线处理；正式整套发布使用统一 `process`。
+`python -m auction_data check` 为只读登录、来源权限与发布日期探测，不下载数据。
 
 ## 认证与隐私
 
@@ -62,7 +62,7 @@ TAQ 检查点为 10:00、12:00、14:00、15:00、15:30、15:50（纽约时间）
 
 1. **普通股**：只保留 Compustat `tpci='0'`。`%` ETF、`1`/`G` 优先股、`2` 权证、`4` units、`7` 封闭式基金、`F`/`S` ADR、`R` 债券型证券（不是 REIT）均排除。`tpci` 为当前快照。REIT/SPAC 无行业字段可识别，随普通股纳入，标记列为 NA。
 2. **标签**：当日历史上市交易所的收盘竞价股数，EXCHG=11 取 `xvol_n`，EXCHG=14 取 `xvol_q`；缺失即标签缺失，不回退其他场所或最大场所。`venue_reconciliation` 分为 consistent / venue_conflict / listing_cross_missing / identity_unresolved。竞价打在 N/Q/P/A/Z 之外的证券日列于 `outside_venue_crosses.csv`（如 2026-10 起 EXCHG 变为 `24` 的 ET 等，这些证券在变更日退出上市区间，不计异常）。
-3. **屏蔽日**：`scripts/data_pipeline/reference/index_events.csv` 中的重大指数再平衡执行收盘日（S&P 季度、Nasdaq-100 年度、Russell、MSCI）和 XNYS 半日市，退出研究样本、10 日窗口有效计数和 5% 分母，在观察层保留并标 `mask_reason`。清单为人工核验的参考数据，`verified=false` 的条目仍剔除，列于 `unverified_events.csv`。
+3. **屏蔽日**：`auction_data/reference/index_events.csv` 中的重大指数再平衡执行收盘日（S&P 季度、Nasdaq-100 年度、Russell、MSCI）和 XNYS 半日市，退出研究样本、10 日窗口有效计数和 5% 分母，在观察层保留并标 `mask_reason`。清单为人工核验的参考数据，`verified=false` 的条目仍剔除，列于 `unverified_events.csv`。
 4. **有效日**：日频成交量与标签都有限且 >0、身份唯一、非屏蔽日。
 5. **ex-post 资格**：全历史异常率（分母为请求范围 ∩ N/Q 上市区间 ∩ 共同已验证覆盖 − 屏蔽日）严格 >5% 整只剔除；t 日之前 10 个 XNYS 会话中至少 6 个有效日（屏蔽日占位、不向前补足）；当日有效。该结果使用未来数据，标为 `ex_post_full_history_not_point_in_time_backtest`。
 6. **研究纳入与暂缓**：`unresolved` 证券在本次研究中暂缓使用（`research_status='deferred'`），保留标识和原因（`unknown_security_type`：窗口内无日频或类型代码缺失；`ticker_history_gap`：上市区间内有无有效 TIC 的交易日；`ambiguous_identity`；`missing_effective_listing_market_boundary`；`zero_denominator`），每次处理从输入重新评估。训练只用 `research_included_expost`（= `eligible`）或 `research_included_pit`（= `pit_eligible` 且非暂缓）。暂缓证券不阻止 `process`/`update` 完成；`quality_status` 只表示处理成功，暂缓数见 manifest 的 `deferred_securities`、`deferred_reasons`。`update` 仍要求原始数据完整且无待发布交易日才报告完成。
@@ -76,13 +76,12 @@ TAQ 检查点为 10:00、12:00、14:00、15:00、15:30、15:50（纽约时间）
 - WRDS 一次性核验：竞价打印是否早于收盘时间戳而被 `continuous_volume` 重复计入；EXCHG `24` 对应的场所代码。
 - 事件清单：2025-06-20 S&P 季度日期仅有 S&P/NZX 官方通知和美国方法论规则，未找到美国指数官方生效通知，保持排除且 `verified=false`；2026-12-18 S&P 与 Nasdaq-100 为未来事件，官方公告后核实。
 
-## 验证与迁移
+## 测试
 
 ```bash
-python -m unittest discover -s scripts/data_pipeline/tests -v
-python -m unittest discover -s scripts/download/tests -v
+python -m unittest -v
 ```
 
-测试使用合成账号、模拟连接和临时数据目录，覆盖身份/量异常、6/10 和 5% 边界、上市区间、time chunk 漏块/漏日、续传/修订、半日市、认证错误净化及版本发布失败；`test_research.py` 另覆盖普通股范围、上市场所标签、转板与迁出、屏蔽日窗口、PIT 不泄漏、拆股方向与真实拆股/合股样例、检查点适用性、输出可复现及事件清单变更重建。本次实现不执行真实登录或全量下载；真实源 schema、账户权限和 Duo 需由用户执行开头的小区间命令核验。
+`tests/` 使用合成账号、模拟 WRDS 连接和临时数据目录（48 项）：`test_pipeline`（续传、补洞、修订、发布滞后、失败恢复、凭证不泄露、写锁、CLI）、`test_auth_calendar`（认证、来源发现、XNYS 日历、raw/处理版本分离）、`test_identity_labels`（普通股范围、后缀映射、上市场所标签、转板与迁出）、`test_eligibility`（有效日、屏蔽日窗口、5% 边界、严格 PIT、暂缓）、`test_events_splits`（事件清单、半日市、拆股方向与真实拆股/合股样例；无本地数据时跳过真实数据用例）、`test_build_publish`（检查点、字段字典、端到端输出、可复现、事件清单变更重建）、`test_compare`（快照比较）。测试不执行真实登录或下载；真实源 schema、账户权限和 Duo 用 `python -m auction_data check` 与小区间 `update` 核验。
 
-迁移删除清单及执行结果见 [迁移记录](WRDS_MIGRATION.md)。旧研究 notebook 已移除，`results/` 为历史实验快照，并非当前模块的验证结果。
+数据内容、处理结果与已知限制见 [数据报告](DATA_REPORT.md)；复现与差异核查见 [REPRODUCIBILITY](REPRODUCIBILITY.md)。旧下载/处理脚本、历史实验结果与迁移记录已在结构调整中删除，仅保留在 Git 历史（基线提交 `b50515d`）。

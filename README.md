@@ -1,44 +1,53 @@
 # Equity Closing Auction — WRDS 数据模块
 
-从 WRDS 获取自 **2022-01-03** 起的 NYSE/Nasdaq 历史日频及 TAQ 日内汇总，校验后保存到本地 `Data/processed/`。后续调用同一方法即可补洞、追加并刷新近期数据。所有命令在仓库根目录运行。
+从 WRDS 获取自 **2022-01-03** 起的 NYSE/Nasdaq 日频（Compustat）与 TAQ 日内汇总，校验、版本化后生成收盘竞价成交量预测的研究样本。所有命令在仓库根目录运行；需要拥有 Compustat 与 TAQ 权限的 WRDS 账号，运行时输入账号与隐藏密码，需要时完成 Duo 批准，模块不保存凭证。
 
 ```bash
-python3 -m venv .venv-forecast
-.venv-forecast/bin/python -m pip install -r scripts/download/requirements-wrds.txt
-.venv-forecast/bin/python -m scripts.data_pipeline update
+python3.13 -m venv .venv-forecast
+.venv-forecast/bin/python -m pip install -r requirements.txt
+.venv-forecast/bin/python -m unittest                      # 离线测试
+.venv-forecast/bin/python -m auction_data check            # 只读：登录、权限与发布日期
+.venv-forecast/bin/python -m auction_data update           # 下载/补洞/刷新 + 处理
+.venv-forecast/bin/python -m auction_data process          # 离线处理（同一输入复用已有版本）
+.venv-forecast/bin/python -m auction_data audit            # raw 完整性
+.venv-forecast/bin/python -m auction_data compare --old <旧快照或版本目录> --new <新快照或版本目录> --out <输出目录>
 ```
 
-也可以打开 [下载与更新 notebook](scripts/download/download_wrds.ipynb)，按 cell 执行首次下载、离线处理和后续更新；它使用适配 Jupyter 的运行时认证回调。
+也可以用 [notebook](notebooks/download_wrds.ipynb) 逐 cell 执行首次下载、离线处理、更新与预览。
 
-运行时输入自己的 WRDS 账号和隐藏密码，并在需要时完成 Duo 登录批准。模块不保存凭证，也没有个人账号默认值。账号必须有 Compustat 与 TAQ 权限。
+## 文档
 
-首次下载可先选一个小区间验证：
+| 文档 | 内容 |
+|---|---|
+| [数据报告](docs/DATA_REPORT.md) | 数据源、范围、身份匹配、标签、筛选、事件日、PIT 与事后口径、暂缓证券、处理结果、质量检查、已知限制 |
+| [数据流程说明](docs/WRDS_DATA_PIPELINE.md) | 输出契约、更新与失败恢复、认证与隐私、研究样本口径 |
+| [复现与差异核查](docs/REPRODUCIBILITY.md) | 干净 checkout 复现、运行验证、确定性范围、重新下载后的差异识别与解释 |
+| [待核实事项](docs/OPEN_ITEMS.md) | 未验证事件日期、待改进与后续项 |
+| [规格](openspec/specs/) | `wrds-data-pipeline`、`auction-research-dataset`、`reproducible-runs` |
 
-```bash
-.venv-forecast/bin/python -m scripts.data_pipeline update --start 2022-01-03 --end 2022-01-14 --markets NYSE
+## 结构
+
+```
+auction_data/          python -m auction_data
+  settings.py          版本、市场代码、检查点、场所常量
+  trading_calendar.py  XNYS 会话、收盘时间、半日市
+  storage.py           原子写入、raw 分区与元数据、指纹、写锁、表校验
+  wrds_auth.py         运行时登录（不保存凭证）
+  wrds_queries.py      Compustat 日频/历史标识与 TAQ 汇总 SQL、来源校验
+  pipeline.py          update / process / audit 入口，分区计划与执行
+  identity.py          Compustat↔TAQ 符号键、证券类型、逐证券上市网格与匹配
+  labels.py            上市场所收盘竞价标签与场所对账
+  events.py            指数再平衡执行日与半日市屏蔽
+  eligibility.py       有效日、10 日 6 有效、事后 5%、严格 PIT、研究纳入
+  splits.py            AJEXDI 拆股换算与未决标记
+  build.py             日频清洗、逐证券流式构建、日内检查点
+  publish.py           版本目录、读盘校验、wrds_current 原子切换
+  report.py            质量报告；dictionary.py 字段字典；compare.py 快照比较
+  reference/index_events.csv   已核验的指数事件清单（规则输入）
+tests/                 离线测试（模拟 WRDS）
+notebooks/             下载与更新 notebook
+docs/                  文档；docs/reference/ 课题报告
+openspec/              规格与已归档变更
 ```
 
-持续更新、离线重处理、审计与快照比较：
-
-```bash
-.venv-forecast/bin/python -m scripts.data_pipeline update
-.venv-forecast/bin/python -m scripts.data_pipeline process
-.venv-forecast/bin/python -m scripts.data_pipeline audit
-.venv-forecast/bin/python -m scripts.data_pipeline compare --old <旧快照或版本目录> --new <新快照或版本目录> --out <输出目录>
-```
-
-Python 调用：
-
-```python
-from scripts.data_pipeline import update_data, process_data, audit_data
-report = update_data(start="2022-01-03", markets=("NYSE", "NASDAQ"))
-print(report["complete"], report["sources"])
-```
-
-`Data/` 全部被 Git 忽略。原始分区位于 `Data/raw/wrds/daily/` 和 `Data/raw/taq/days/`；处理结果分别在 `us_wrds_daily`、`us_wrds_taq`、`us_wrds_quality`。通过 `Data/processed/wrds_current/manifest.json` 核验当前版本。日内数据为服务器端聚合的检查点和竞价数据，不是完整逐笔存档。
-
-研究样本只含 Compustat `tpci='0'` 普通股；标签为当日上市交易所的收盘竞价量（NYSE 取 `xvol_n`，Nasdaq 取 `xvol_q`）。重大指数再平衡执行日（清单见 `scripts/data_pipeline/reference/index_events.csv`）和半日市退出样本、滚动窗口与 5% 分母。质量筛选要求日频总成交量和竞价标签均有限且 >0；过去 10 个交易日（不含当日，屏蔽日不补足）至少 6 天有效；全历史异常率 >5% 整只剔除（事后口径）。另提供只用 t−1 以前数据的 PIT 资格计数，以及用 `ajexdi_s / ajexdi_t` 把历史股数换算到预测日股本口径所需的字段。质量报告在 `Data/processed/report/`。
-
-从干净 checkout 复现、验证一次运行、以及重新下载后识别和解释差异，见 [复现与差异核查](docs/REPRODUCIBILITY.md)；待核实事项见 [OPEN_ITEMS](docs/OPEN_ITEMS.md)。
-
-完整输出契约、更新/失败恢复、认证和限制见 [数据流程说明](docs/WRDS_DATA_PIPELINE.md)。旧混合处理产物、LSE 流程及研究 notebook 已退出项目；`results/` 仅保留历史实验产物。
+`Data/`（raw 分区、处理版本、运行报告）全部被 Git 忽略。研究训练使用 `Data/processed/us_wrds_quality/research_sample.csv.gz` 中 `research_included_pit` 为真的行；每次实验记录所用筛选条件、处理版本目录与 Git 提交。

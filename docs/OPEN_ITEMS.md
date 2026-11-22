@@ -2,7 +2,7 @@
 
 基线：处理版本 `wrds-process-v3`，已归档变更见 [openspec/changes/archive](../openspec/changes/archive/)。每项关闭时注明所在 OpenSpec change 与提交。研究口径见 [数据流程说明](WRDS_DATA_PIPELINE.md)。
 
-## 事件日期（`scripts/data_pipeline/reference/index_events.csv` 中 `verified=false`）
+## 事件日期（`auction_data/reference/index_events.csv` 中 `verified=false`）
 
 | 执行收盘日 | 事件 | 当前处理 | 待做 | 状态 |
 |---|---|---|---|---|
@@ -14,6 +14,7 @@
 
 ## 产物与报告
 
+- `report/funnel.csv` 的 `with_listing_boundary` 证券数（6,997）不含 19 只 `ticker_history_gap` 暂缓证券，而同行股票日包含它们；下次规则版本升级时让证券数与股票日口径一致（数据本身无误）。
 - `report/daily_counts.png` 的 PIT 曲线目前统计严格 `pit_eligible`，研究训练使用 `research_included_pit`（两者仅差 TORO 654 行，单日最多 1 只）。下次规则版本升级时改为同时显示或改用 `research_included_pit`。
 
 ## 数据与口径后续项

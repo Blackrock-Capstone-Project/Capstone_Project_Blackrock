@@ -1,7 +1,0 @@
-statistic,actual,recorded,matches
-rows,9912832,9912832,True
-securities,12975,12975,True
-trading_dates,1202,1202,True
-date_min,2022-01-03,2022-01-03,True
-date_max,2026-10-16,2026-10-16,True
-duplicate_keys,0,0,True

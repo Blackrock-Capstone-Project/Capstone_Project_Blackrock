@@ -1,6 +1,6 @@
 # 复现与差异核查
 
-面向拥有 WRDS 权限的研究者：从干净 checkout 完成下载、处理与验证，并在重新下载后识别、解释与上一快照的差异。口径与输出契约见 [数据流程说明](WRDS_DATA_PIPELINE.md)，待核实事项见 [OPEN_ITEMS](OPEN_ITEMS.md)。
+面向拥有 WRDS 权限的研究者：从干净 checkout 完成下载、处理与验证，并在重新下载后识别、解释与上一快照的差异。口径与输出契约见 [数据流程说明](WRDS_DATA_PIPELINE.md)，数据内容与结果见 [数据报告](DATA_REPORT.md)，待核实事项见 [OPEN_ITEMS](OPEN_ITEMS.md)。
 
 ## 1. 前提
 
@@ -8,7 +8,7 @@
 |---|---|
 | WRDS 权限 | Compustat North America Daily：`comp_na_daily_all.secd`、`comp_na_daily_all.sec_idhist`；TAQ Millisecond：`taqm_YYYY.ctm_YYYYMMDD`。使用自己的账号，需要时完成 Duo 批准 |
 | 网络 | `wrds-pgdata.wharton.upenn.edu:9737`（PostgreSQL 协议） |
-| Python | 3.13；依赖固定在 `scripts/download/requirements-wrds.txt` |
+| Python | 3.13；依赖固定在根目录 `requirements.txt` |
 | 资源（2022-01-03 至 2026-11-19 实测） | raw 约 730 MB；每个处理版本约 1.6 GB（历史版本不自动清理）；全量处理约 16 分钟、峰值内存约 18–22 GB |
 
 仓库不含任何数据、凭证或本地环境（见 `.gitignore`）。
@@ -18,24 +18,26 @@
 ```bash
 git clone <repo> && cd <repo>
 python3.13 -m venv .venv-forecast
-.venv-forecast/bin/python -m pip install -r scripts/download/requirements-wrds.txt
+.venv-forecast/bin/python -m pip install -r requirements.txt
 
 # 离线测试（无需 WRDS；真实数据样例测试在无 Data/ 时自动跳过）
-.venv-forecast/bin/python -m unittest discover -s scripts/data_pipeline/tests
-.venv-forecast/bin/python -m unittest discover -s scripts/download/tests
+.venv-forecast/bin/python -m unittest
+
+# 只读检查：登录、来源权限与各来源最新发布日期（不下载）
+.venv-forecast/bin/python -m auction_data check
 
 # 小区间冒烟：确认账号权限、Duo 与 schema
-.venv-forecast/bin/python -m scripts.data_pipeline update --start 2022-01-03 --end 2022-01-14 --markets NYSE
+.venv-forecast/bin/python -m auction_data update --start 2022-01-03 --end 2022-01-14 --markets NYSE
 
 # 全量下载 + 处理（交互输入账号与隐藏密码）
-.venv-forecast/bin/python -m scripts.data_pipeline update
+.venv-forecast/bin/python -m auction_data update
 # 或分开：先只下载，再离线处理与审计
-.venv-forecast/bin/python -m scripts.data_pipeline update --download-only
-.venv-forecast/bin/python -m scripts.data_pipeline process
-.venv-forecast/bin/python -m scripts.data_pipeline audit
+.venv-forecast/bin/python -m auction_data update --download-only
+.venv-forecast/bin/python -m auction_data process
+.venv-forecast/bin/python -m auction_data audit
 ```
 
-也可按 [下载与更新 notebook](../scripts/download/download_wrds.ipynb) 逐 cell 执行。
+也可按 [下载与更新 notebook](../notebooks/download_wrds.ipynb) 逐 cell 执行。
 
 ## 3. 验证一次运行
 
@@ -51,8 +53,8 @@ python3.13 -m venv .venv-forecast
 - **相同 raw 快照 + 相同配置 + 相同代码版本 → 逐字节相同的数据产物**（gzip 头 mtime 固定为 0，排序与格式确定）。首次提交前已用待提交文件的干净副本、对同一 raw 快照（2022-01-03 至 2026-11-19，1,286 个分区）独立重建：处理指纹相同，21 个数据产物 SHA256 与基线版本 `wrds-process-v3` 逐字节一致。
 - `report/daily_counts.png` 依赖本机字体渲染，不作跨机器逐字节保证；其底表 `daily_counts.csv` 是确定的。
 - `report/summary.json` 的 `diff_vs_previous` 取决于数据目录中是否已有上一处理版本（全新目录为 `previous: none`），其余字段确定。
-- 修改处理规则代码必须递增 `scripts/data_pipeline/common.py` 的 `PROCESS_VERSION`，否则会复用旧产物。`RAW_VERSION` 只标记 raw 分区格式，递增会触发全部重新下载。
-- 事件清单 `scripts/data_pipeline/reference/index_events.csv` 的任何修改都会改变指纹并触发重建。
+- 修改处理规则代码必须递增 `auction_data/settings.py` 的 `PROCESS_VERSION`，否则会复用旧产物。`RAW_VERSION` 只标记 raw 分区格式，递增会触发全部重新下载。
+- 事件清单 `auction_data/reference/index_events.csv` 的任何修改都会改变指纹并触发重建。
 
 ## 5. 重新下载为什么会不同
 
@@ -73,14 +75,14 @@ python3.13 -m venv .venv-forecast
 cp -cR Data/raw Data_snapshot_YYYYMMDD/raw    # 或: rsync -a Data/raw/ Data_snapshot_YYYYMMDD/raw/
 
 # 2) 更新并处理
-.venv-forecast/bin/python -m scripts.data_pipeline update
+.venv-forecast/bin/python -m auction_data update
 
 # 3) raw 层：哪些分区变了、哪些键与字段变了
-.venv-forecast/bin/python -m scripts.data_pipeline compare \
+.venv-forecast/bin/python -m auction_data compare \
     --old Data_snapshot_YYYYMMDD --new Data --out compare_raw_YYYYMMDD
 
 # 4) 处理层：两个版本目录（历次版本都保留在 .wrds_versions/）
-.venv-forecast/bin/python -m scripts.data_pipeline compare \
+.venv-forecast/bin/python -m auction_data compare \
     --old Data/processed/.wrds_versions/<旧id> --new Data/processed/.wrds_versions/<新id> --out compare_processed_YYYYMMDD
 ```
 
