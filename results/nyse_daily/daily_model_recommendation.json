@@ -1,0 +1,13 @@
+{
+  "model": "XGBoost",
+  "selection_rule": "lowest validation equal-stock MacroMAE among current fixed configurations and baselines",
+  "previous_pooled_selected_model": "XGBoost",
+  "validation_macro_MAE": 94928.26754464666,
+  "test_macro_MAE": 111842.21960190419,
+  "test_macro_rank": 1,
+  "test_median_skill": 0.2852124510808882,
+  "test_improved_stock_fraction": 0.9495669893020886,
+  "configurations_retuned": false,
+  "test_used_for_selection": false,
+  "interpretation": "exploratory extension after earlier inspection of the same test period; independent confirmation requires a future period"
+}

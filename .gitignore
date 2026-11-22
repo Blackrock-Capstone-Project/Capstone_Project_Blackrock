@@ -1,0 +1,33 @@
+# --- Data: raw WRDS partitions, processed versions, run reports, locks (never committed) ---
+/Data/
+
+# --- Credentials ---
+.env
+.env.*
+!.env.example
+.pgpass
+.pg_service.conf
+*.pem
+*credentials*.json
+
+# --- Local Python / Jupyter environment ---
+.venv*/
+venv/
+**/__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+
+# --- Editor / OS / assistant local settings ---
+.DS_Store
+.vscode/
+.idea/
+.claude/settings.local.json
+
+# --- Historical experiment outputs that contain row-level WRDS values or are large ---
+results/nyse_daily/daily_predictions.csv.gz
+results/nyse_daily/label_link_reviews.csv.gz
+results/nyse_daily/mck_gap_check.csv
+
+# --- Logs / scratch ---
+*.log

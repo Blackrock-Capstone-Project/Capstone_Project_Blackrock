@@ -1,0 +1,36 @@
+{
+  "rows": 9912832,
+  "securities": 12975,
+  "trading_dates": 1202,
+  "first_date": "2022-01-03",
+  "last_date": "2026-10-16",
+  "duplicate_keys": 0,
+  "by_market": {
+    "NASDAQ": 6167122,
+    "NYSE": 3745710
+  },
+  "by_type": {
+    "0": 6132328,
+    "2": 715198,
+    "4": 386487,
+    "1": 574201,
+    "F": 481953,
+    "%": 932384,
+    "7": 446589,
+    "R": 212583,
+    "G": 18236,
+    "S": 12620
+  },
+  "missing": {
+    "security_id": 0,
+    "date": 0,
+    "ticker": 1283,
+    "market": 0,
+    "currency": 0,
+    "PX_LAST": 1,
+    "PX_VOLUME": 162,
+    "CUR_MKT_CAP": 718076,
+    "adjustment_factor": 0,
+    "security_type_code": 253
+  }
+}

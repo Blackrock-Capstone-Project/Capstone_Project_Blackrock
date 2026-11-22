@@ -1,0 +1,4 @@
+pandas==2.2.3
+psycopg2-binary==2.9.13
+exchange_calendars==4.13.2
+matplotlib==3.10.8

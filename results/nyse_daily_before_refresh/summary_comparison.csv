@@ -1,0 +1,6 @@
+statistic,actual,recorded,matches
+US panel rows,4198505,4198505,True
+NYSE rows,1539605,1539605,True
+US labeled stocks,4618,4618,True
+US first target date,2022-01-03,2022-01-03,True
+US last target date,2026-10-16,2026-10-16,True
