@@ -1,0 +1,36 @@
+# --- Data: raw WRDS partitions, processed versions, run reports, locks (never committed) ---
+/Data/
+
+# --- Credentials ---
+.env
+.env.*
+!.env.example
+.pgpass
+.pg_service.conf
+*.pem
+*credentials*.json
+
+# --- Local Python / Jupyter environment ---
+.venv*/
+venv/
+**/__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+
+# --- Editor / OS / assistant local settings ---
+.DS_Store
+.vscode/
+.idea/
+.claude/settings.local.json
+
+# --- Local raw snapshots and comparison outputs (see docs/REPRODUCIBILITY.md) ---
+/Data_snapshot*/
+/compare_*/
+
+# --- Any other bulky or row-level WRDS extracts kept outside Data/ by mistake ---
+*.parquet
+*.feather
+
+# --- Logs / scratch ---
+*.log
