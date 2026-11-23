@@ -17,4 +17,4 @@
 ## 4. 提交与正式版本（用户确认后）
 
 - [x] 4.1 更新 `docs/FEATURES.md`、`docs/OPEN_ITEMS.md`；提交代码
-- [ ] 4.2 提交后构建正式 features-v2 版本并切换 `current`；v1 版本目录保留；verify 通过
+- [x] 4.2 提交后构建正式 features-v2 版本并切换 `current`；v1 版本目录保留；verify 通过
