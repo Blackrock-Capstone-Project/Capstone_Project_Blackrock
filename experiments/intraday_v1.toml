@@ -1,0 +1,38 @@
+# Intraday residual model g_b, first formal version. Learns y - yD_hat; prediction = yD_hat + g_b.
+stage = "intraday"
+markets = ["NYSE", "NASDAQ"]
+checkpoints = ["10:00", "12:00", "14:00", "15:00", "15:30", "15:50"]
+upstream = "daily_v1.toml"            # yD_hat from rolling-origin walk-forward of the daily selection procedure
+seed = 20261122
+
+[sample]
+extra_required = ["q_b"]              # on top of the daily evaluation sample; C_b valid and mu_b present
+
+[schedule]
+train = ["2023-07-01", "2025-01-01"]  # walk-forward residuals 2023Q3-2024Q4
+valid = ["2025-01-01", "2025-07-01"]  # g_b model selection
+final_fit = ["2023-07-01", "2025-07-01"]
+
+[feature_sets]
+intraday_core = ["q_b", "yD_hat"]
+
+[baselines]
+B0 = "zero"                           # yD_hat unchanged
+B1 = "q_b"                            # yD_hat + q_b
+
+[[experiment]]
+id = "I0"
+sets = ["intraday_core"]
+
+[selection]
+metric = "rmse"
+tolerance = 0.005
+model_order = ["linear", "lgbm"]      # linear first when within tolerance
+use_p_values = false
+
+[models.linear]
+[models.lgbm]
+grid = [{num_leaves = 15, min_child_samples = 1000}, {num_leaves = 63, min_child_samples = 1000}]
+learning_rate = 0.05
+max_rounds = 1000
+early_stopping = 50

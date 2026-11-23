@@ -1,0 +1,87 @@
+# Daily model f, first formal version. Pre-registered: do not change after any validation/test result
+# without a new OpenSpec change. Spec: openspec/changes/model-experiments-v1.
+stage = "daily"
+markets = ["NYSE", "NASDAQ"]          # fitted and selected separately
+target = "y"                          # log1p(listing-venue closing-cross shares)
+seed = 20261122
+feature_version = "features-v2"     # profile deviation on ln basis
+
+[sample]
+inclusion = "research_included_pit"
+# Evaluation-sample required columns (distinct from the 12 core features).
+core_required = ["a_last", "a_ma5", "a_ma22", "d_last", "d_ma22", "logmcap_lag1"]
+
+[split]
+train_start = "2022-04-01"
+valid_start = "2025-01-01"
+test_start  = "2025-07-01"            # test = test_start .. data end; never used for fitting or selection
+
+[feature_sets]
+core = ["a_last", "a_last_age", "a_ma5", "a_ma22", "d_last", "d_last_age", "d_ma22", "logmcap_lag1",
+        "dow", "month_end", "quarter_end", "opex"]
+cluster = ["cluster_id"]
+profiles = ["pf_lshare", "pf_dev_std"]   # option B; pf_dev_ac1 is diagnostic only
+
+[baselines]                           # fixed definitions, independent of feature_sets
+naive_last = "a_last"
+ma22 = "a_ma22"
+har = ["a_last", "a_ma5", "a_ma22", "dow", "month_end", "quarter_end", "opex"]
+
+[[experiment]]
+id = "D1"
+sets = ["core"]
+[[experiment]]
+id = "D2"
+sets = ["core", "cluster"]
+[[experiment]]
+id = "D3"
+sets = ["core", "profiles"]
+
+[clustering]
+profiles = ["pf_lshare", "pf_dev_std"]   # must equal feature_sets.profiles (D2 and D3 share inputs)
+diagnostic_profiles = ["pf_dev_ac1", "pf_dollar_auc"]   # reported only; never model inputs
+profile_available = "profile_status == 'ok'"
+k_candidates = [3, 5, 8, 10]
+winsor = [0.01, 0.99]
+n_init = 20
+label_order = "pf_lshare"
+
+[selection]
+metric = "rmse"                       # validation RMSE in log space is the only selection criterion
+tolerance = 0.005                     # fixed practical tolerance (not a statistical equivalence bound)
+experiment_order = ["D1", "D3", "D2"] # first experiment within tolerance wins; this is also the retention decision
+k_rule = "smallest_within_tolerance"
+use_p_values = false                  # DM / CI are reported for interpretation only
+
+[rolling_origin]
+anchors = ["2023-07-01", "2024-01-01", "2024-07-01", "2025-01-01", "2025-07-01"]
+inner_valid_months = 6
+official_anchor = "2025-07-01"
+fold_frequency = "quarter"
+first_fold = "2023-07-01"
+last_fold_end = "2025-07-01"
+budget_hours = 12.0                   # projected wall clock for all selection anchors on this machine
+projection = "first_anchor_seconds * sum(train_rows_k) / train_rows_first"
+fallback_anchors = ["2023-07-01", "2024-07-01", "2025-07-01"]   # triggered by timing only
+
+[models.ols]
+[models.ridge]
+alpha = [0.1, 1.0, 10.0, 100.0, 1000.0]
+[models.lasso]
+alpha = [0.0001, 0.001, 0.01, 0.1]
+[models.lgbm]
+grid = [{num_leaves = 31, min_child_samples = 100}, {num_leaves = 31, min_child_samples = 1000},
+        {num_leaves = 127, min_child_samples = 100}, {num_leaves = 127, min_child_samples = 1000}]
+learning_rate = 0.05
+max_rounds = 2000
+early_stopping = 100
+[models.xgb]
+grid = [{max_depth = 6, min_child_weight = 10}, {max_depth = 8, min_child_weight = 100}]
+learning_rate = 0.05
+max_rounds = 2000
+early_stopping = 100
+[models.catboost]
+grid = [{depth = 6, l2_leaf_reg = 3}, {depth = 8, l2_leaf_reg = 3}]
+learning_rate = 0.05
+max_rounds = 2000
+early_stopping = 100
