@@ -11,6 +11,10 @@ python3.13 -m venv .venv-forecast
 .venv-forecast/bin/python -m auction_data process          # 离线处理（同一输入复用已有版本）
 .venv-forecast/bin/python -m auction_data audit            # raw 完整性
 .venv-forecast/bin/python -m auction_data compare --old <旧快照或版本目录> --new <新快照或版本目录> --out <输出目录>
+.venv-forecast/bin/python -m auction_features build    # 特征面板：固定 processed 版本、构建或复用
+.venv-forecast/bin/python -m auction_features verify   # 只读校验当前特征版本
+.venv-forecast/bin/python -m auction_features report   # 重算质量报告到 Data/features/reports/（不改版本目录）
+AUCTION_FEATURES_REALDATA=1 .venv-forecast/bin/python -m unittest tests.test_features_realdata  # 真实数据验收
 ```
 
 也可以用 [notebook](notebooks/download_wrds.ipynb) 逐 cell 执行首次下载、离线处理、更新与预览。
@@ -22,6 +26,8 @@ python3.13 -m venv .venv-forecast
 | [数据报告](docs/DATA_REPORT.md) | 数据源、范围、身份匹配、标签、筛选、事件日、PIT 与事后口径、暂缓证券、处理结果、质量检查、已知限制 |
 | [数据流程说明](docs/WRDS_DATA_PIPELINE.md) | 输出契约、更新与失败恢复、认证与隐私、研究样本口径 |
 | [复现与差异核查](docs/REPRODUCIBILITY.md) | 干净 checkout 复现、运行验证、确定性范围、重新下载后的差异识别与解释 |
+| [特征面板](docs/FEATURES.md) | 特征口径、时点、拆股一致性与字段字典（由代码生成） |
+| [K-means 文献与设计说明](docs/KMEANS_RESEARCH_AND_DESIGN_BRIEF.md) | 文献核对状态与聚类设计建议 |
 | [待核实事项](docs/OPEN_ITEMS.md) | 未验证事件日期、待改进与后续项 |
 | [规格](openspec/specs/) | `wrds-data-pipeline`、`auction-research-dataset`、`reproducible-runs` |
 
@@ -44,10 +50,14 @@ auction_data/          python -m auction_data
   publish.py           版本目录、读盘校验、wrds_current 原子切换
   report.py            质量报告；dictionary.py 字段字典；compare.py 快照比较
   reference/index_events.csv   已核验的指数事件清单（规则输入）
+auction_features/      python -m auction_features（只读 processed，不做拟合）
+  panel.py             固定输入版本、历史面板、可用条件、连续市场区间、拆股与因子
+  windows.py           会话窗口纯函数；daily.py / intraday.py / profiles.py 三类特征
+  dictionary.py        特征字典（唯一来源）；build.py 发布与复用；report.py 质量报告
 tests/                 离线测试（模拟 WRDS）
 notebooks/             下载与更新 notebook
 docs/                  文档；docs/reference/ 课题报告
 openspec/              规格与已归档变更
 ```
 
-`Data/`（raw 分区、处理版本、运行报告）全部被 Git 忽略。研究训练使用 `Data/processed/us_wrds_quality/research_sample.csv.gz` 中 `research_included_pit` 为真的行；每次实验记录所用筛选条件、处理版本目录与 Git 提交。
+`Data/`（raw 分区、处理版本、特征版本、运行报告）全部被 Git 忽略。研究训练使用 `Data/processed/us_wrds_quality/research_sample.csv.gz` 中 `research_included_pit` 为真的行；每次实验记录所用筛选条件、处理版本目录与 Git 提交。
