@@ -54,6 +54,7 @@ auction_features/      python -m auction_features（只读 processed，不做拟
   panel.py             固定输入版本、历史面板、可用条件、连续市场区间、拆股与因子
   windows.py           会话窗口纯函数；daily.py / intraday.py / profiles.py 三类特征
   dictionary.py        特征字典（唯一来源）；build.py 发布与复用；report.py 质量报告
+experiments/           预注册的模型实验配置（daily_v1.toml、intraday_v1.toml；model-experiments-v1 尚未实施）
 tests/                 离线测试（模拟 WRDS）
 notebooks/             下载与更新 notebook
 docs/                  文档；docs/reference/ 课题报告

@@ -1,4 +1,4 @@
-# 特征面板（features-v1）
+# 特征面板（features-v2）
 
 由 `python -m auction_features build` 生成，规格见 [openspec/specs/feature-panel](../openspec/specs/feature-panel/spec.md)（设计：[archive/2026-11-23-feature-panel](../openspec/changes/archive/2026-11-23-feature-panel/design.md)）。本文件的定义表由 `auction_features/dictionary.py` 生成（`feature_dictionary.csv` 同源），修改字典后重新生成。
 
@@ -9,7 +9,9 @@
 - **行范围**：daily 行集合 = `stock_day_quality`（全面板，不按研究标志筛选）；模型层用 `research_included_pit & core_required_complete` 构造评估样本。`security_status`、`exclusion_reason` 是事后字段，只用于报告。
 - **时点**：所有 daily 特征只用 t 之前的观测、t 日日历与 `f_t`（假设 A1：拆股生效与比例开盘前已公告，未经数据验证；`split_on_t` 供稳健性剔除）。竞价、成交量、检查点族历史不跨连续市场区间（转板、回转、重新上市）与拆股分段（以 t−1 及以前最后已知分段为准）；屏蔽日占位；价格族可用屏蔽日。
 - **命名**：`*_lag1` 为严格 t−1；`*_last`、`*_last_age` 为 5 个会话内最近可用观测及其间隔。
-- **拆股一致性**：同日比值/乘积（`pf_lshare`、`pf_dollar_auc`）在一致拆股下精确不变；跨日量（`a_*`、`d_*`、`mu_b`）经 `f` 换算在同一分段内一致；`pf_dev_std`、`pf_dev_ac1` 中 `e_s` 以 log1p 计算，一致拆股前后只近似不变（偏差约 `1/V^A`）；市值依赖价格与股本同日更新。
+- **拆股一致性**：同日比值/乘积（`pf_lshare`、`pf_dollar_auc`）在一致拆股下精确不变；跨日量（`a_*`、`d_*`、`mu_b`）经 `f` 换算在同一分段内一致；画像偏离 `e_s = ln(V^A_s) − la_ma22_s`（两侧同为 ln、同股数口径），`pf_dev_std`、`pf_dev_ac1` 在一致拆股下浮点舍入内不变；市值依赖价格与股本同日更新。
+- **版本**：features-v2 只改变画像偏离口径（features-v1 用 `ln(1+V^A_s) − a_ma22_s`）；daily 与 intraday 表与 v1 内容一致。两个版本并存于 `Data/features/.versions/`。
+- **模型使用**：model-experiments-v1 的 D2、D3 只使用 `pf_lshare`、`pf_dev_std`；`pf_dev_ac1`（自相关长期稳定性较低）与 `pf_dollar_auc` 只作诊断。
 - **不做拟合**：标准化、winsorize、填补、聚类都在模型层，只用对应训练窗口。
 
 ## 字段定义
@@ -62,7 +64,7 @@
 | mu_b | intraday | intraday | intraday_core | mean log1p(C_{s,b} f_s/f_t) over usable slots | TAQ cumvol, ajexdi | 20/12 | U_C applicable, volume_valid, unmasked; same continuous market interval; seg_s = seg_ref_t | before open of t | True |
 | q_b | intraday | intraday | intraday_core | log1p(C_b) - mu_b | derived |  |  | checkpoint b on t | True |
 | pf_lshare | profiles | profile | profile | mean ln(label_s/PX_VOLUME_s) | label, cshtrd | 126/60 | U_A in the continuous market interval of m; 126 sessions before m | before open of m | False |
-| pf_dev_std | profiles | profile | profile | 1.4826*median\|e-median(e)\|, e = ln(1+label_s) - a_ma22_s | derived | 126/60 | U_A in the continuous market interval of m; 126 sessions before m | before open of m | False |
+| pf_dev_std | profiles | profile | profile | 1.4826*median\|e-median(e)\|, e = ln(label_s) - la_ma22_s (ln mean of label_r f_r/f_s over the a_ma22_s usable slots) | derived | 126/60 | U_A in the continuous market interval of m; 126 sessions before m | before open of m | False |
 | pf_dev_ac1 | profiles | profile | profile | Pearson (ddof=0) of clipped e on adjacent-session pairs; clip at median +/- 4*pf_dev_std | derived | 126/50 pairs | U_A in the continuous market interval of m; 126 sessions before m | before open of m | False |
 | pf_dollar_auc | profiles | profile | profile_ext | mean ln(label_s * PX_LAST_s); optional size extension | label, prccd | 126/60 | U_A in the continuous market interval of m; 126 sessions before m | before open of m | False |
 | pf_dev_std_plain | profiles | profile | diagnostic | std(e, ddof=1) | derived |  | U_A in the continuous market interval of m; 126 sessions before m | before open of m | False |

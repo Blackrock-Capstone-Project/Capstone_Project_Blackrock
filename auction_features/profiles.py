@@ -3,7 +3,7 @@
 At the first session m of each month, using the 126 sessions before m and only U_A observations in the continuous
 market interval of m:
   pf_lshare  = mean ln(label/PX_VOLUME)                              (n_A >= 60)
-  e_s        = ln(1+label_s) - a_ma22_s  (a_ma22_s non-missing)        (n_e >= 60)
+  e_s        = ln(label_s) - la_ma22_s  (la_ma22_s: ln mean over the a_ma22_s usable slots, same share basis; n_e >= 60)
   pf_dev_std = 1.4826 * median|e - median(e)|
   e~         = clip(e, median(e) +/- 4 * pf_dev_std)
   pf_dev_ac1 = Pearson(e~_s, e~_prev(s)) with ddof=0, prev(s) = immediately preceding session, both in the e set
@@ -13,7 +13,9 @@ No standardisation, winsorisation or clustering happens here.
 import numpy as np
 from scipy.stats import rankdata
 
-from .config import PROFILE
+from .config import A_MA, PROFILE
+from .daily import converted_family
+from .windows import masked_mean
 
 FLOAT_FIELDS = ['pf_lshare', 'pf_dev_std', 'pf_dev_ac1', 'pf_dollar_auc', 'pf_dev_std_plain', 'pf_dev_ac1_plain',
                 'pf_dev_ac1_spearman']
@@ -26,7 +28,15 @@ def pearson(x, y):
     return float(((x - x.mean()) * (y - y.mean())).mean() / (sx * sy))
 
 
-def profile_at(a, a_ma22, pm):
+def la_ma22(a):
+    """ln mean of V^A_r f_r / f_s over exactly the usable slots of a_ma22_s (internal to profiles only)."""
+    w, mp = A_MA['a_ma22']
+    vals, mask = converted_family(a, a['U_A'], a['label'], w, log1p=False)
+    out, _ = masked_mean(vals, mask, mp)
+    return out
+
+
+def profile_at(a, la22, pm):
     """Profile record at dense position pm (first session of a month; may be outside the security's range)."""
     p = PROFILE
     rec = {k: np.nan for k in FLOAT_FIELDS}
@@ -42,7 +52,7 @@ def profile_at(a, a_ma22, pm):
     s = idx[usable & (a['interval'][idx] == interval)]
     rec['n_A'] = len(s)
     with np.errstate(divide='ignore', invalid='ignore'):
-        e_full = np.log1p(a['label']) - a_ma22
+        e_full = np.log(a['label']) - la22
         if len(s) >= p['min_obs']:
             rec['pf_dollar_auc'] = float(np.mean(np.log(a['label'][s] * a['price'][s])))
     ok = s[np.isfinite(e_full[s])]

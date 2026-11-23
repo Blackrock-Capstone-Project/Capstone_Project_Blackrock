@@ -25,10 +25,10 @@
 - 124 只暂缓证券（105 `unknown_security_type`、19 `ticker_history_gap`）随输入更新自动重新评估；无需手工操作，关注 `report/security_status_summary.csv`。
 - 2,257 只证券因全历史异常率 >5% 被事后剔除，约 8.4% 应有股票日缺上市场所竞价标签；按市场与规模的分解尚未做。
 
-## 特征面板（features-v1，见 [FEATURES.md](FEATURES.md)）
+## 特征面板（见 [FEATURES.md](FEATURES.md)；当前 features-v2）
 
 - **假设 A1 未验证**：t 日拆股生效与比例开盘前已公告，特征按 `f_t` 换算。pit 行中 855 行 `split_on_t`；模型稳健性检验剔除这些行。
 - **股本更新滞后**：拆股日 `cshoc` 约 9% 未同日更新，`logmcap_lag1` 会跳变，不修正；全面板 |Δlogmcap| > ln 1.8 共 6,691 次，其中 176 次在拆股后两天内。
-- **画像的拆股近似不变**：`pf_dev_std`、`pf_dev_ac1` 中 `e_s` 用 log1p，一致拆股前后偏差约 `1/V^A`；低竞价量股票窗口含拆股时不可忽略。若需精确不变，可改用 ln 口径（需另开变更）。
-- **画像诊断（聚类阶段需处理）**：`pf_lshare` 与 `pf_dev_std` 相关 −0.85，超过设计中的 0.7 复核线；`pf_dev_std` 与规模扩展 `pf_dollar_auc` 相关 −0.82；`pf_dev_ac1` 相隔 6 个月的重测相关仅 0.21（`pf_lshare` 0.95、`pf_dev_std` 0.87）。
-- 画像 2022-04 全部缺失、2022-05 起 NYSE 约 16%、Nasdaq 约 26% 缺失，原因为样本起点后历史不足与新股；保留为 `unassigned` 并在模型报告中披露。
+- **画像口径**：features-v2 起 `e_s = ln(V^A_s) − la_ma22_s`，一致拆股下画像在浮点舍入内不变（v1 的 log1p 口径偏差约 `1/V^A`，已由 `profile-log-deviation` 变更修正）。
+- **画像诊断（训练期，月初 < 2025-01-01）**：6 个月重测相关 NYSE `pf_lshare` 0.93、`pf_dev_std` 0.72、`pf_dev_ac1` 0.18；Nasdaq 0.95、0.87、0.17。`pf_dev_ac1` 自相关长期稳定性较低，只作诊断。Nasdaq 上 `pf_lshare` 与 `pf_dev_std` 相关 −0.84，与 `logmcap` 相关 0.77、−0.72（NYSE 为 0.37、−0.36），需在聚类结果中报告规模主导诊断、簇规模与稳定性；画像是否提供额外预测价值由 D1/D2/D3 回答。
+- 画像 2022-04 全部缺失；训练期缺失率 NYSE 19.4%、Nasdaq 27.3%（样本起点后历史不足与新股），保留为 `unassigned` 并在模型报告中披露。

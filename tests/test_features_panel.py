@@ -213,9 +213,8 @@ class SplitAndFactorTests(Base):
         self.assertTrue((y.profile_status == 'ok').all())
         np.testing.assert_allclose(y.pf_lshare, x.pf_lshare, rtol=REL, atol=REL)
         np.testing.assert_allclose(y.pf_dollar_auc, x.pf_dollar_auc, rtol=REL, atol=REL)
-        bound = 4.0 / self.panel.loc[self.panel.security_id == sid, 'label'].min()   # O(1/V^A) from log1p
-        np.testing.assert_allclose(y.pf_dev_std, x.pf_dev_std, atol=bound)
-        np.testing.assert_allclose(y.pf_dev_ac1, x.pf_dev_ac1, atol=bound * 10)
+        for c in ['pf_dev_std', 'pf_dev_ac1']:   # ln basis: exact up to floating-point rounding
+            np.testing.assert_allclose(y[c], x[c], rtol=REL, atol=REL)
 
 
 class InvarianceTests(Base):

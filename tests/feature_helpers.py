@@ -177,7 +177,7 @@ def reference(panel, cal=CAL):
 
         ua = lambda r: bool(r.valid_day)
         uv = lambda r: r.mask_reason == '' and _fin(r.PX_VOLUME) and r.PX_VOLUME > 0
-        a22 = {}
+        a22, la22 = {}, {}
         for i, t in enumerate(seq):
             if t not in idx:
                 continue
@@ -197,6 +197,7 @@ def reference(panel, cal=CAL):
             rec['interval_id'] = interval[t] + 1
             daily[(sid, t)] = rec
             a22[t] = rec['a_ma22']
+            la22[t] = mean_min(hist(i, 22, ua, lambda r: r.label, False), 15)
             C = hist(i, 20, lambda r: r.mask_reason == '' and _fin(r.cv14) and r.cv14 >= 0, lambda r: r.cv14, True)
             intr[(sid, t)] = mean_min(C, 12)
         # profiles
@@ -212,7 +213,7 @@ def reference(panel, cal=CAL):
             window = [seq[j] for j in range(max(0, pm - PROFILE['window']), pm)]
             S = [d for d in window if d in idx and idx[d].valid_day and interval[d] == m_int]
             any_ok = [d for d in window if d in idx and idx[d].valid_day]
-            e = {d: np.log1p(idx[d].label) - a22[d] for d in S if _fin(a22[d])}
+            e = {d: np.log(idx[d].label) - la22[d] for d in S if _fin(la22[d])}
             pairs = [d for d in e if seq.index(d) - 1 >= max(0, pm - PROFILE['window']) and seq[seq.index(d) - 1] in e]
             rec = dict(n_A=len(S), n_e=len(e), n_p=len(pairs))
             if len(S) < 60:

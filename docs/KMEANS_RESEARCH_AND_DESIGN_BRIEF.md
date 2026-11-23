@@ -68,14 +68,16 @@ Allison Bishop、Adele Shahi、Yuqian Zhang，**Closer to Size: A Preliminary In
 
 ## 3. 建议的聚类目的与精简画像（项目设计，非文献结论）
 
-希望识别股票交易习惯，避免聚类主要重复市值分组。第一版默认使用以下三项**行为画像**；竞价金额只作可选规模扩展，默认不加入。精确公式、窗口（月初前 126 个会话）、最少观测与配对规则见 [`feature-panel` design D5](../openspec/changes/archive/2026-11-23-feature-panel/design.md)，与核心特征的重叠分析见 [`model-experiments-v1` design M3](../openspec/changes/model-experiments-v1/design.md)。
+希望识别股票交易习惯，避免聚类主要重复市值分组。最终画像输入（方案 B，2026-11-23）：D2、D3 统一使用 `pf_lshare`、`pf_dev_std`；`pf_dev_ac1` 继续计算，仅作诊断；竞价金额只作可选规模扩展，默认不加入。精确公式见主规格 [`feature-panel`](../openspec/specs/feature-panel/spec.md)（features-v2：`e_s = ln(V^A_s) − la_ma22_s`），取舍依据见 [`model-experiments-v1` design M3a](../openspec/changes/model-experiments-v1/design.md)。
 
-| 画像 | 含义 | 注意事项 |
+| 画像 | 含义 | 状态与训练期诊断 |
 |---|---|---|
-| 长期 log 竞价占比 `pf_lshare` | 交易集中在收盘的程度 | 分母为 Compustat 当日全天量；与核心 `a_ma22 − d_ma22` 重叠，额外提供长期分量 |
-| 相对竞价量偏离的稳健离散度 `pf_dev_std` | 竞价需求是否稳定 | 偏离 e 的实际量与 22 日基准同为 s 日股数口径 |
-| 相对偏离的一阶自相关 `pf_dev_ac1` | 异常放大是否延续 | 只用紧邻会话配对，至少 50 对；短历史下估计噪声大，报告重测可靠性 |
-| （可选扩展）log 竞价金额 `pf_dollar_auc` | 规模维度 | 仅计算、默认不入聚类；后续单独实验并诊断是否由规模主导 |
+| 长期 log 竞价占比 `pf_lshare` | 交易集中在收盘的程度 | 模型输入；6 个月重测相关 0.93–0.95 |
+| 相对竞价量偏离的稳健离散度 `pf_dev_std` | 竞价需求是否稳定 | 模型输入；重测相关 0.72（NYSE）/0.87（Nasdaq）；Nasdaq 上与 `pf_lshare` 相关 −0.84 |
+| 相对偏离的一阶自相关 `pf_dev_ac1` | 异常放大是否延续 | 仅诊断；自相关长期稳定性较低（重测相关约 0.17–0.18） |
+| （可选扩展）log 竞价金额 `pf_dollar_auc` | 规模维度 | 仅诊断；与 `logmcap` 相关约 0.9 |
+
+Nasdaq 上两项输入画像彼此及与规模高度相关，需报告规模主导诊断、簇规模与稳定性；不做收缩或白化。D2/D3 无增益时，表述为"在该市场、模型族与样本下画像未提供额外预测价值"，不据此认定画像只是规模编码。
 
 市值仍直接进入日频核心特征。收益波动率可作为后续画像扩展。
 
@@ -101,7 +103,7 @@ K-means 根据标准化画像的距离分组。簇名应在观察实际中心后
 |---|---|---|
 | D1 | 日频核心特征 | 无聚类基线 |
 | D2 | 核心 + cluster_id | 加入分类后是否改善 |
-| D3 | 核心 + 相同三项连续画像 | 不聚类而直接提供画像是否更好 |
+| D3 | 核心 + 相同两项连续画像（`pf_lshare`、`pf_dev_std`） | 不聚类而直接提供画像是否更好 |
 
 三组使用相同时间切分与相同评估股票日。D2比D1好，并不足以证明分类本身有效，因为D2带入了额外的长历史信息；D3提供必要对照。簇级聚合与分簇模型不是第一版必须内容，勿同时加入造成归因困难。
 
@@ -109,7 +111,7 @@ K-means 根据标准化画像的距离分组。簇名应在观察实际中心后
 
 ## 6. 交给执行 agent 的框架设计任务
 
-> 已交付为 OpenSpec 变更 `feature-panel`、`model-experiments-v1`（proposal/design/specs/tasks）；画像由四项改为三项行为画像（见 §3）。以下保留原始任务描述。
+> 已交付为 OpenSpec 变更 `feature-panel`、`model-experiments-v1`（proposal/design/specs/tasks）；画像先由四项改为三项行为画像，最终确定为两项输入加一项诊断（见 §3）。以下保留原始任务描述。
 
 请结合本文、现有代码和模型框架，先设计，不直接实施或提交发布：
 

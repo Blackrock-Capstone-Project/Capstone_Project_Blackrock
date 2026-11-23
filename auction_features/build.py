@@ -25,7 +25,7 @@ from .dictionary import check_columns, feature_dictionary, table_fields
 from .intraday import intraday_features
 from .panel import (CP_COLUMNS, calendar_sessions, dense_security, input_identity, load_panel, recheck_identity,
                     resolve_processed, security_arrays)
-from .profiles import FLOAT_FIELDS, month_starts, profile_at
+from .profiles import FLOAT_FIELDS, la_ma22, month_starts, profile_at
 
 PACKAGE = Path(__file__).resolve().parent
 KEYS = {'daily': ['security_id', 'date'], 'intraday': ['security_id', 'date', 'checkpoint'],
@@ -51,8 +51,9 @@ def compute_security(rows, sidx, session_month, month_start):
     for cp, (c, mu, q) in intraday_features(a).items():
         out['C|' + cp], out['mu|' + cp], out['q|' + cp] = c[pos], mu[pos], q[pos]
     records = []
+    la22 = la_ma22(a)
     for mo in np.unique(session_month[sidx]):
-        rec = profile_at(a, d['a_ma22'], int(month_start[mo] - sidx[0]))
+        rec = profile_at(a, la22, int(month_start[mo] - sidx[0]))
         rec['month_ord'] = int(mo)
         records.append(rec)
     return out, records

@@ -88,7 +88,7 @@ FIELDS = [
     ('q_b', 'intraday', 'intraday', 'intraday_core', 'log1p(C_b) - mu_b', 'derived', '', '', 'checkpoint b on t', True),
     ('pf_lshare', 'profiles', 'profile', 'profile', 'mean ln(label_s/PX_VOLUME_s)', 'label, cshtrd', '126/60', PF,
      PRE_M, False),
-    ('pf_dev_std', 'profiles', 'profile', 'profile', '1.4826*median|e-median(e)|, e = ln(1+label_s) - a_ma22_s',
+    ('pf_dev_std', 'profiles', 'profile', 'profile', '1.4826*median|e-median(e)|, e = ln(label_s) - la_ma22_s (ln mean of label_r f_r/f_s over the a_ma22_s usable slots)',
      'derived', '126/60', PF, PRE_M, False),
     ('pf_dev_ac1', 'profiles', 'profile', 'profile', 'Pearson (ddof=0) of clipped e on adjacent-session pairs; clip at '
      'median +/- 4*pf_dev_std', 'derived', '126/50 pairs', PF, PRE_M, False),

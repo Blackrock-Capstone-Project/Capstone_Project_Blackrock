@@ -1,7 +1,7 @@
-"""Feature version, windows, minimum observations and profile thresholds (spec: openspec/changes/feature-panel)."""
+"""Feature version, windows, minimum observations and profile thresholds (spec: openspec/specs/feature-panel)."""
 from auction_data.settings import CHECKPOINTS
 
-FEATURE_VERSION = 'features-v1'
+FEATURE_VERSION = 'features-v2'   # v2: profile deviation e_s on ln basis (profile-log-deviation)
 
 MARKET_CODES = {'NYSE': 0, 'NASDAQ': 1}
 MARKET_NAMES = {v: k for k, v in MARKET_CODES.items()}
